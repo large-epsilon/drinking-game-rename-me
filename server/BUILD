@@ -5,5 +5,14 @@ py_binary(
     srcs = [
         "main.py",
         "cards.py",
+    ],
+    #deps = [
+    #    "@rules_python//python/runfiles",
+    #],
+    data = [
+        ":templates/index.html",
+        ":templates/room.html",
     ]
 )
+
+

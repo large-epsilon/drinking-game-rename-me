@@ -7,5 +7,63 @@
 </head>
 <body>
 <p>Your room ID is: {{ room_id }}</p>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+var room_id = {{ room_id }};
+
+var state = {
+    version: 0,
+    message: "",
+}
+
+var state_updater = {
+    poll: function() {
+        args = {
+            room_id: room_id,
+            last_update: state.version,
+        }
+        $.ajax({
+            url: "/await_state",
+            type: "POST",
+            dataType: "json",
+            data: $.param(args),
+            success: state_updater.onSuccess,
+            error: state_updater.onError,
+        })
+    },
+
+    sendMessage: function(message) {
+        args = {
+            room_id: room_id,
+            new_state: {
+                message: message,
+            },
+        };
+        $.ajax({
+            url: "/update_state",
+            type: "POST",
+            dataType: "text",
+            data: JSON.stringify(args),
+        });
+    },
+
+    onSuccess: function(response) {
+        state = response;
+        console.log(state.message);
+        window.setTimeout(state_updater.poll, 0);
+    },
+
+    onError: function(response) {
+        console.error("failed to poll");
+        console.log(response);
+        window.setTimeout(state_updater.poll, 500);
+    },
+}
+
+$(document).ready(function() {
+    state_updater.poll();
+});
+
+</script>
 </body>
 </html>

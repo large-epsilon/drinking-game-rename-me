@@ -1,12 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="generator" content=
-"HTML Tidy for HTML5 for Linux version 5.6.0">
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<link rel="stylesheet" href=
+"https://unpkg.com/papercss@1.8.2/dist/paper.min.css">
 <title>Kings Cup</title>
 </head>
 <body>
-<p>Hello! Welcome to kings cup. This site is under development, so
-for the time being, there is only one rule: DRINK!</p>
+<div class="paper container margin-top margin-bottom">
+    <div class="col flex-center">
+        <div class="row margin flex-center">
+            <div class="text-center">
+                <H1>King's Cup</h1>
+            </div>
+        </div>
+        <div class="row margin flex-spaces child-borders">
+            <form class="padding" action="/room" method="get">
+            <label for="room_id">Room ID:</label>
+            <input type="text" id="room_id" name="room_id"><br>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username"><br>
+            <input type="submit" value="Submit">
+            </form>
+        </div>
+    </div>
+</div>
 </body>
 </html>

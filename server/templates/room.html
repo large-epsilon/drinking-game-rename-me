@@ -1,19 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="generator" content=
-"HTML Tidy for HTML5 for Linux version 5.6.0">
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<link rel="stylesheet" href=
+"https://unpkg.com/papercss@1.8.2/dist/paper.min.css">
 <title>Kings Cup - {{ room_id }}</title>
 </head>
 <body>
-<p>Your room ID is: {{ room_id }}</p>
+<nav class="border fixed split-nav">
+  <div class="nav-brand">
+    <h3><a href="#">Kings Cup</a></h3>
+  </div>
+  <div class="collapsible">
+    <input id="collapsible1" type="checkbox" name="collapsible1">
+    <label for="collapsible1">
+      <div class="bar1"></div>
+      <div class="bar2"></div>
+    </label>
+    <div class="collapsible-body">
+      <ul class="inline">
+        <li>Room: {{ room_id }}</li>
+        <li>Name: {{ username }}</li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<div class="paper container margin-top margin-bottom">
+    <div class="col flex-center">
+        <div class="row">
+            <div class="col-4">
+            <h3>Room: {{ room_id }}</h3>
+            </div>
+            <div class="col-4">
+            <h3>Name: {{ username }}</h3>
+            </div>
+            <div class="col-4">
+            </div>
+        </div>
+        <p>Hello, {{ username}}! Your room ID is: {{ room_id }}</p>
+        <p>The players in this room are:</p>
+        <div id="players_list">
+        </div>
+    </div>
+</div>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
-var room_id = {{ room_id }};
+var room_id = "{{ room_id }}";
 
 var state = {
     version: 0,
+    players: [],
     message: "",
+}
+
+var update_players_list = function() {
+    $("#players_list").empty();
+    for (var i = 0; i < state.players.length; i++) {
+        $("#players_list").append("<li>" + state.players[i] + "</li>");
+    }
 }
 
 var state_updater = {
@@ -50,6 +94,7 @@ var state_updater = {
     onSuccess: function(response) {
         state = response;
         console.log(state.message);
+        update_players_list();
         window.setTimeout(state_updater.poll, 0);
     },
 
@@ -59,6 +104,7 @@ var state_updater = {
         window.setTimeout(state_updater.poll, 500);
     },
 }
+
 
 $(document).ready(function() {
     state_updater.poll();

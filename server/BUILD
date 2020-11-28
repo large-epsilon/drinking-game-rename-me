@@ -4,15 +4,27 @@ py_binary(
     python_version = "PY3",
     srcs = [
         "main.py",
-        "cards.py",
     ],
-    #deps = [
-    #    "@rules_python//python/runfiles",
-    #],
+    deps = [
+        ":cards",
+        ":rooms",
+    ],
     data = [
         ":templates/index.html",
         ":templates/room.html",
     ]
 )
 
+py_library(
+    name = "rooms",
+    srcs = [
+        "rooms.py",
+    ]
+)
 
+py_library(
+    name = "cards",
+    srcs = [
+        "cards.py",
+    ]
+)

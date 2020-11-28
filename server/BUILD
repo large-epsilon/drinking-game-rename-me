@@ -6,7 +6,6 @@ py_binary(
         "main.py",
     ],
     deps = [
-        ":cards",
         ":rooms",
     ],
     data = [
@@ -19,12 +18,5 @@ py_library(
     name = "rooms",
     srcs = [
         "rooms.py",
-    ]
-)
-
-py_library(
-    name = "cards",
-    srcs = [
-        "cards.py",
     ]
 )

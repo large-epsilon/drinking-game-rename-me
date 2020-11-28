@@ -10,6 +10,15 @@ from tornado.web import RequestHandler
 from tornado.web import HTTPError
 from tornado.options import parse_command_line
 
+from server.constants import FE_STATE_PLAYERS
+from server.constants import FE_STATE_VERSION
+from server.constants import FE_STATE_DRAWN_CARDS
+from server.constants import FE_STATE_CARD_SUIT
+from server.constants import FE_STATE_CARD_VALUE
+from server.constants import FE_STATE_CARD_OWNER
+from server.constants import ROOM_PLAYER_CONN_UPDATE_MS
+from server.deck import Deck
+
 # Poor man's in-memory database. Stores the state of all game sessions.
 rooms_db = {}
 
@@ -22,16 +31,15 @@ class Room:
     def __init__(self, room_id, cards=[]):
         self.cond = Condition()
         self.room_id = room_id
-        # TODO: initial state?
-        self.frontend_state = {"version": 1, "message": "AAAAA"}
+        self.frontend_state = {FE_STATE_VERSION: 1, FE_STATE_DRAWN_CARDS: []}
         # starting at 1 instead of 0 so clients will pull the first update
         self.state_version_counter = 1
         self.players = {}
+        self.deck = Deck()
         self.periodic_callback = PeriodicCallback(
-            lambda: self.maybe_update_player_statuses(), 1000
+            lambda: self.maybe_update_player_statuses(), ROOM_PLAYER_CONN_UPDATE_MS
         )
         self.periodic_callback.start()
-        
 
     def add_player(self, username):
         if username in self.players and self.players[username].is_online():
@@ -39,12 +47,23 @@ class Room:
         self.players[username] = Player(username)
         self.update_frontend_state()
 
+    def draw_card(self, player):
+        card = self.deck.draw_card()
+        self.frontend_state[FE_STATE_DRAWN_CARDS].append(
+            {
+                FE_STATE_CARD_SUIT: card.suit,
+                FE_STATE_CARD_VALUE: card.value,
+                FE_STATE_CARD_OWNER: player,
+            }
+        )
+        self.update_frontend_state()
+
     def get_player_statuses(self):
         return {u: p.is_online() for u, p in self.players.items()}
 
     def maybe_update_player_statuses(self):
         statuses = self.get_player_statuses()
-        for username, status in self.frontend_state["players"].items():
+        for username, status in self.frontend_state[FE_STATE_PLAYERS].items():
             if username not in statuses or statuses[username] != status:
                 self.update_frontend_state()
                 return
@@ -53,8 +72,8 @@ class Room:
         if state:
             self.frontend_state = state
         self.state_version_counter += 1
-        self.frontend_state["version"] = self.state_version_counter
-        self.frontend_state["players"] = self.get_player_statuses()
+        self.frontend_state[FE_STATE_VERSION] = self.state_version_counter
+        self.frontend_state[FE_STATE_PLAYERS] = self.get_player_statuses()
         self.cond.notify_all()
 
     def get_last_update_id(self):
@@ -83,18 +102,8 @@ class RoomHandler(RequestHandler):
         try:
             room.add_player(player)
         except PlayerExistsInRoomException:
-            raise HttpError(403)
+            raise HTTPError(403)
         self.render("room.html", room_id=room_id, username=player)
-
-
-class UpdateRoomStateHandler(RequestHandler):
-    def post(self):
-        self.args = json_decode(self.request.body)
-        room_id = str(self.args["room_id"])
-        new_state = self.args["new_state"]
-        if room_id not in rooms_db:
-            raise HTTPError(400)
-        rooms_db[room_id].update_frontend_state(state=new_state)
 
 
 class RoomStateNotificationHandler(RequestHandler):
@@ -129,3 +138,14 @@ class PlayerKeepAliveHandler(RequestHandler):
         if player not in rooms_db[room_id].players:
             raise HTTPError(400)
         rooms_db[room_id].players[player].last_seen = time.time()
+
+
+class DrawCardHandler(RequestHandler):
+    def post(self):
+        room_id = self.get_argument("room_id")
+        player = self.get_argument("username")
+        if room_id not in rooms_db:
+            raise HTTPError(400)
+        if player not in rooms_db[room_id].players:
+            raise HTTPError(400)
+        rooms_db[room_id].draw_card(player)

@@ -10,12 +10,11 @@ from tornado.web import RequestHandler
 from tornado.web import HTTPError
 from tornado.options import parse_command_line
 
+from server.constants import PORT
 from server.rooms import PlayerKeepAliveHandler
 from server.rooms import RoomHandler
 from server.rooms import RoomStateNotificationHandler
-from server.rooms import UpdateRoomStateHandler
-
-PORT = 8080
+from server.rooms import DrawCardHandler
 
 
 class MainHandler(RequestHandler):
@@ -30,8 +29,8 @@ def main():
             ("/", MainHandler),
             ("/room", RoomHandler),
             ("/await_state", RoomStateNotificationHandler),
-            ("/update_state", UpdateRoomStateHandler),
             ("/keep_alive", PlayerKeepAliveHandler),
+            ("/draw_card", DrawCardHandler),
         ],
         static_path=os.path.join(os.path.dirname(__file__), "static"),
         template_path=os.path.join(os.path.dirname(__file__), "templates"),

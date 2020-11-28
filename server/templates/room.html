@@ -28,17 +28,7 @@
 </nav>
 <div class="paper container margin-top margin-bottom">
     <div class="col flex-center">
-        <div class="row">
-            <div class="col-4">
-            <h3>Room: {{ room_id }}</h3>
-            </div>
-            <div class="col-4">
-            <h3>Name: {{ username }}</h3>
-            </div>
-            <div class="col-4">
-            </div>
-        </div>
-        <p>Hello, {{ username}}! Your room ID is: {{ room_id }}</p>
+        <div id="last_card"></div>
         <p>The players in this room are:</p>
         <div id="players_list">
         </div>
@@ -52,7 +42,7 @@ var username = "{{ username }}";
 var state = {
     version: 0,
     players: {},
-    message: "",
+    drawn_cards: [],
 }
 
 var update_players_list = function() {
@@ -65,6 +55,16 @@ var update_players_list = function() {
             }
             $("#players_list").append("<li>" + displayname + "</li>");
         }
+    }
+}
+
+var update_last_drawn_card = function() {
+    $("#last_card").empty();
+    if (state.drawn_cards.length == 0) {
+        $("#last_card").html("No card has been drawn yet.");
+    } else {
+        var card = state.drawn_cards[state.drawn_cards.length-1];
+        $("#last_card").html("" + card.owner + " drew a " + card.value + " of " + card.suit + ".");
     }
 }
 
@@ -84,25 +84,11 @@ var state_updater = {
         })
     },
 
-    sendMessage: function(message) {
-        args = {
-            room_id: room_id,
-            new_state: {
-                message: message,
-            },
-        };
-        $.ajax({
-            url: "/update_state",
-            type: "POST",
-            dataType: "text",
-            data: JSON.stringify(args),
-        });
-    },
-
     onSuccess: function(response) {
         state = response;
         console.log(state.message);
         update_players_list();
+        update_last_drawn_card();
         window.setTimeout(state_updater.poll, 0);
     },
 
@@ -121,6 +107,13 @@ function keep_alive() {
     });
 }
 
+function draw_card() {
+    $.ajax({
+        url: "/draw_card",
+        type: "POST",
+        data: { username: username, room_id: room_id },
+    });
+}
 
 $(document).ready(function() {
     setInterval(keep_alive, 500);

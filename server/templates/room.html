@@ -46,17 +46,24 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
 var room_id = "{{ room_id }}";
+var username = "{{ username }}";
 
 var state = {
     version: 0,
-    players: [],
+    players: {},
     message: "",
 }
 
 var update_players_list = function() {
     $("#players_list").empty();
-    for (var i = 0; i < state.players.length; i++) {
-        $("#players_list").append("<li>" + state.players[i] + "</li>");
+    for (const key in state.players) {
+        if (state.players.hasOwnProperty(key)) {
+            var displayname = key;
+            if (!state.players[key]) {
+                displayname += " (offline)";
+            }
+            $("#players_list").append("<li>" + displayname + "</li>");
+        }
     }
 }
 
@@ -105,8 +112,17 @@ var state_updater = {
     },
 }
 
+function keep_alive() {
+    $.ajax({
+        url: "/keep_alive",
+        type: "POST",
+        data: { username: username, room_id: room_id },
+    });
+}
+
 
 $(document).ready(function() {
+    setInterval(keep_alive, 500);
     state_updater.poll();
 });
 

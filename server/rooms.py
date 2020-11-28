@@ -3,7 +3,7 @@ import os
 import time
 
 from tornado.escape import json_decode
-from tornado.ioloop import IOLoop
+from tornado.ioloop import IOLoop, PeriodicCallback
 from tornado.locks import Condition
 from tornado.web import Application
 from tornado.web import RequestHandler
@@ -12,6 +12,11 @@ from tornado.options import parse_command_line
 
 # Poor man's in-memory database. Stores the state of all game sessions.
 rooms_db = {}
+
+
+class PlayerExistsInRoomException(Exception):
+    pass
+
 
 class Room:
     def __init__(self, room_id, cards=[]):
@@ -22,20 +27,34 @@ class Room:
         # starting at 1 instead of 0 so clients will pull the first update
         self.state_version_counter = 1
         self.players = {}
+        self.periodic_callback = PeriodicCallback(
+            lambda: self.maybe_update_player_statuses(), 1000
+        )
+        self.periodic_callback.start()
+        
 
     def add_player(self, username):
-        if username in self.players:
-            raise KeyError
+        if username in self.players and self.players[username].is_online():
+            raise PlayerExistsInRoomException()
         self.players[username] = Player(username)
         self.update_frontend_state()
-        
+
+    def get_player_statuses(self):
+        return {u: p.is_online() for u, p in self.players.items()}
+
+    def maybe_update_player_statuses(self):
+        statuses = self.get_player_statuses()
+        for username, status in self.frontend_state["players"].items():
+            if username not in statuses or statuses[username] != status:
+                self.update_frontend_state()
+                return
 
     def update_frontend_state(self, state=None):
         if state:
             self.frontend_state = state
         self.state_version_counter += 1
         self.frontend_state["version"] = self.state_version_counter
-        self.frontend_state["players"] = [key for key in self.players.keys()]
+        self.frontend_state["players"] = self.get_player_statuses()
         self.cond.notify_all()
 
     def get_last_update_id(self):
@@ -45,10 +64,13 @@ class Room:
         return self.frontend_state
 
 
-# TODO: somehow check if the player is still connected
-class Player():
+class Player:
     def __init__(self, username):
         self.username = username
+        self.last_seen = time.time()
+
+    def is_online(self):
+        return time.time() - self.last_seen < 3
 
 
 class RoomHandler(RequestHandler):
@@ -60,8 +82,8 @@ class RoomHandler(RequestHandler):
         room = rooms_db[room_id]
         try:
             room.add_player(player)
-        except KeyError:
-            raise HTTPError(400)
+        except PlayerExistsInRoomException:
+            raise HttpError(403)
         self.render("room.html", room_id=room_id, username=player)
 
 
@@ -96,3 +118,14 @@ class RoomStateNotificationHandler(RequestHandler):
 
     def on_connection_close(self):
         self.wait_future.cancel()
+
+
+class PlayerKeepAliveHandler(RequestHandler):
+    def post(self):
+        room_id = self.get_argument("room_id")
+        player = self.get_argument("username")
+        if room_id not in rooms_db:
+            raise HTTPError(400)
+        if player not in rooms_db[room_id].players:
+            raise HTTPError(400)
+        rooms_db[room_id].players[player].last_seen = time.time()

@@ -10,6 +10,7 @@ from tornado.web import RequestHandler
 from tornado.web import HTTPError
 from tornado.options import parse_command_line
 
+from server.rooms import PlayerKeepAliveHandler
 from server.rooms import RoomHandler
 from server.rooms import RoomStateNotificationHandler
 from server.rooms import UpdateRoomStateHandler
@@ -30,6 +31,7 @@ def main():
             ("/room", RoomHandler),
             ("/await_state", RoomStateNotificationHandler),
             ("/update_state", UpdateRoomStateHandler),
+            ("/keep_alive", PlayerKeepAliveHandler),
         ],
         static_path=os.path.join(os.path.dirname(__file__), "static"),
         template_path=os.path.join(os.path.dirname(__file__), "templates"),

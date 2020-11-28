@@ -70,7 +70,7 @@ class Player:
         self.last_seen = time.time()
 
     def is_online(self):
-        return time.time() - self.last_seen < 3
+        return time.time() - self.last_seen < 1
 
 
 class RoomHandler(RequestHandler):
